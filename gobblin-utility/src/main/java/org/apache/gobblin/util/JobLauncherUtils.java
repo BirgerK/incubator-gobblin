@@ -132,37 +132,41 @@ public class JobLauncherUtils {
    * @param logger a {@link Logger} used for logging
    */
   public static void cleanJobStagingData(State state, Logger logger) throws IOException {
-    Preconditions.checkArgument(state.contains(ConfigurationKeys.WRITER_STAGING_DIR),
-        "Missing required property " + ConfigurationKeys.WRITER_STAGING_DIR);
-    Preconditions.checkArgument(state.contains(ConfigurationKeys.WRITER_OUTPUT_DIR),
-        "Missing required property " + ConfigurationKeys.WRITER_OUTPUT_DIR);
+    boolean hasForks = state.contains(ConfigurationKeys.FORK_BRANCHES_KEY);
+    int forks = hasForks ? state.getPropAsInt(ConfigurationKeys.FORK_BRANCHES_KEY) : 1;
+    for(int currentFork = 0 ; currentFork < forks ; currentFork++) {
+      String stagingDirProp = ForkOperatorUtils.getPropertyNameForBranch(ConfigurationKeys.WRITER_STAGING_DIR, forks, currentFork);
+      String outputDirProp = ForkOperatorUtils.getPropertyNameForBranch(ConfigurationKeys.WRITER_OUTPUT_DIR, forks, currentFork);
+      Preconditions.checkArgument(state.contains(stagingDirProp), "Missing required property " + ConfigurationKeys.WRITER_STAGING_DIR);
+      Preconditions.checkArgument(state.contains(outputDirProp), "Missing required property " + ConfigurationKeys.WRITER_OUTPUT_DIR);
 
-    String writerFsUri = state.getProp(ConfigurationKeys.WRITER_FILE_SYSTEM_URI, ConfigurationKeys.LOCAL_FS_URI);
-    FileSystem fs = getFsWithProxy(state, writerFsUri, WriterUtils.getFsConfiguration(state));
+      String writerFsUri = state.getProp(ForkOperatorUtils.getPropertyNameForBranch(ConfigurationKeys.WRITER_FILE_SYSTEM_URI, forks, currentFork), ConfigurationKeys.LOCAL_FS_URI);
+      FileSystem fs = getFsWithProxy(state, writerFsUri, WriterUtils.getFsConfiguration(state));
 
-    Path jobStagingPath = new Path(state.getProp(ConfigurationKeys.WRITER_STAGING_DIR));
-    logger.info("Cleaning up staging directory " + jobStagingPath);
-    HadoopUtils.deletePath(fs, jobStagingPath, true);
+      Path jobStagingPath = new Path(state.getProp(stagingDirProp));
+      logger.info("Cleaning up staging directory " + jobStagingPath);
+      HadoopUtils.deletePath(fs, jobStagingPath, true);
 
-    if (fs.exists(jobStagingPath.getParent()) && fs.listStatus(jobStagingPath.getParent()).length == 0) {
-      logger.info("Deleting directory " + jobStagingPath.getParent());
-      HadoopUtils.deletePath(fs, jobStagingPath.getParent(), true);
-    }
+      if (fs.exists(jobStagingPath.getParent()) && fs.listStatus(jobStagingPath.getParent()).length == 0) {
+        logger.info("Deleting directory " + jobStagingPath.getParent());
+        HadoopUtils.deletePath(fs, jobStagingPath.getParent(), true);
+      }
 
-    Path jobOutputPath = new Path(state.getProp(ConfigurationKeys.WRITER_OUTPUT_DIR));
-    logger.info("Cleaning up output directory " + jobOutputPath);
-    HadoopUtils.deletePath(fs, jobOutputPath, true);
+      Path jobOutputPath = new Path(state.getProp(outputDirProp));
+      logger.info("Cleaning up output directory " + jobOutputPath);
+      HadoopUtils.deletePath(fs, jobOutputPath, true);
 
-    if (fs.exists(jobOutputPath.getParent()) && fs.listStatus(jobOutputPath.getParent()).length == 0) {
-      logger.info("Deleting directory " + jobOutputPath.getParent());
-      HadoopUtils.deletePath(fs, jobOutputPath.getParent(), true);
-    }
+      if (fs.exists(jobOutputPath.getParent()) && fs.listStatus(jobOutputPath.getParent()).length == 0) {
+        logger.info("Deleting directory " + jobOutputPath.getParent());
+        HadoopUtils.deletePath(fs, jobOutputPath.getParent(), true);
+      }
 
-    if (state.contains(ConfigurationKeys.ROW_LEVEL_ERR_FILE)) {
-      if (state.getPropAsBoolean(ConfigurationKeys.CLEAN_ERR_DIR, ConfigurationKeys.DEFAULT_CLEAN_ERR_DIR)) {
-        Path jobErrPath = new Path(state.getProp(ConfigurationKeys.ROW_LEVEL_ERR_FILE));
-        log.info("Cleaning up err directory : " + jobErrPath);
-        HadoopUtils.deleteIfExists(fs, jobErrPath, true);
+      if (state.contains(ConfigurationKeys.ROW_LEVEL_ERR_FILE)) {
+        if (state.getPropAsBoolean(ConfigurationKeys.CLEAN_ERR_DIR, ConfigurationKeys.DEFAULT_CLEAN_ERR_DIR)) {
+          Path jobErrPath = new Path(state.getProp(ConfigurationKeys.ROW_LEVEL_ERR_FILE));
+          log.info("Cleaning up err directory : " + jobErrPath);
+          HadoopUtils.deleteIfExists(fs, jobErrPath, true);
+        }
       }
     }
   }

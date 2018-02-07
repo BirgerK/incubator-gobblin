@@ -513,16 +513,16 @@ public class Fork<S, D> implements Closeable, FinalState, RecordStreamConsumer<S
   private DataWriter<Object> buildWriter()
       throws IOException {
     DataWriterBuilder<Object, Object> builder = this.taskContext.getDataWriterBuilder(this.branches, this.index)
-        .writeTo(Destination.of(this.taskContext.getDestinationType(this.branches, this.index), this.taskState))
+        .writeTo(Destination.of(this.taskContext.getDestinationType(this.branches, this.index), this.forkTaskState))
         .writeInFormat(this.taskContext.getWriterOutputFormat(this.branches, this.index)).withWriterId(this.taskId)
         .withSchema(this.convertedSchema.orNull()).withBranches(this.branches).forBranch(this.index);
     if (this.taskAttemptId.isPresent()) {
       builder.withAttemptId(this.taskAttemptId.get());
     }
 
-    DataWriter<Object> writer = new PartitionedDataWriter<>(builder, this.taskContext.getTaskState());
+    DataWriter<Object> writer = new PartitionedDataWriter<>(builder, this.forkTaskState);
     logger.info("Wrapping writer " + writer);
-    return new DataWriterWrapperBuilder<>(writer, this.taskState).build();
+    return new DataWriterWrapperBuilder<>(writer, this.forkTaskState).build();
   }
 
   private void buildWriterIfNotPresent()

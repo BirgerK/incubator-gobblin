@@ -85,6 +85,6 @@ public class RowLevelPolicyCheckerBuilder {
   public RowLevelPolicyChecker build()
       throws Exception {
     return new RowLevelPolicyChecker(createPolicyList(), this.state.getId(),
-        WriterUtils.getWriterFS(this.state, 1, 0), this.state);
+        WriterUtils.getWriterFS(this.state, this.state.contains(ConfigurationKeys.FORK_BRANCHES_KEY) ? this.state.getPropAsInt(ConfigurationKeys.FORK_BRANCHES_KEY) : 1, 0), this.state);
   }
 }
